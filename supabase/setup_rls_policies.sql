@@ -22,6 +22,11 @@ DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can view all profiles" ON public.profiles
 FOR SELECT TO authenticated USING (true);
 
+-- Politique : Permettre la lecture publique pour la vérification initiale (optionnel, peut être supprimé après)
+-- Cette politique permet de vérifier l'existence du superadmin même sans session
+CREATE POLICY "Public can check superadmin exists" ON public.profiles
+FOR SELECT TO anon USING (role = 'superadmin');
+
 -- Politique : Les utilisateurs peuvent voir leur propre profil
 CREATE POLICY "Users can view their own profile" ON public.profiles
 FOR SELECT TO authenticated USING (auth.uid() = id);

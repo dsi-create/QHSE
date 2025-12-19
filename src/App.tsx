@@ -47,23 +47,27 @@ const App = () => {
       if (!session) { // Only run if no user is currently logged in
         console.log("App.tsx: Checking for superadmin in Supabase...");
         try {
+          // Utiliser une requête anonyme pour vérifier l'existence du superadmin
           const { data: admins, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id')
             .eq('role', 'superadmin')
             .limit(1);
 
-          if (error) throw error;
+          if (error) {
+            // Si erreur RLS, ce n'est pas grave, on continue
+            console.log("App.tsx: Could not check superadmin (RLS may be blocking):", error.message);
+            return;
+          }
 
           if (!admins || admins.length === 0) {
-            console.log("App.tsx: No superadmin found. Please create one manually in Supabase dashboard.");
-            // Note: In Supabase, you typically create the first admin through the dashboard or migrations
+            console.log("App.tsx: No superadmin found in profiles table. Users should be created in Supabase Auth.");
           } else {
-            console.log("App.tsx: Superadmin exists in Supabase.");
+            console.log("App.tsx: Superadmin exists in Supabase profiles table.");
           }
         } catch (error: any) {
-          console.error("App.tsx: Error checking for superadmin:", error.message);
-          // Don't show error to user, just log it
+          console.log("App.tsx: Error checking for superadmin (non-critical):", error.message);
+          // Ne pas bloquer l'application si cette vérification échoue
         }
       }
     };
