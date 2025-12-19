@@ -1,0 +1,11 @@
+# Variables d'environnement pour l'application QHSE
+
+## Pour le développement local (.env)
+VITE_SUPABASE_URL=https://lpaakleuwselpyqjbwao.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwYWFrbGV1d3NlbHB5cWpid2FvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMTg0NTQsImV4cCI6MjA4MTY5NDQ1NH0.wviBwe6GqtIihY7k5RQLhot3vjnFoncldMSz-Dxz5a4
+VITE_API_URL=http://localhost:3001/api
+
+## Pour Netlify (à ajouter dans l'interface)
+VITE_SUPABASE_URL=https://lpaakleuwselpyqjbwao.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwYWFrbGV1d3NlbHB5cWpid2FvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMTg0NTQsImV4cCI6MjA4MTY5NDQ1NH0.wviBwe6GqtIihY7k5RQLhot3vjnFoncldMSz-Dxz5a4
+

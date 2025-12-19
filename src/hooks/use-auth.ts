@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/integrations/api/client';
+import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { User, Users } from '@/types';
 
@@ -11,23 +11,17 @@ export const useAuth = ({ initialUsers }: UseAuthProps) => {
   const [currentUser, setCurrentUser] = useState<{ username: string; details: User } | null>(null);
   const [users, setUsers] = useState<Users>(initialUsers); // Will be populated from DB
 
-  // Function to fetch all profiles from API
+  // Function to fetch all profiles from Supabase
   const fetchAllProfiles = async () => {
-    // Vérifier si l'utilisateur est connecté avant de faire la requête
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    if (!token) {
-      console.log("No token available, skipping fetchAllProfiles");
-      return {};
-    }
-
-    // Vérifier aussi que le token est défini dans le client API
-    apiClient.setToken(token);
-
     try {
-      const profilesData = await apiClient.getProfiles();
+      const { data: profilesData, error } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (error) throw error;
 
       const fetchedUsers: Users = {};
-      profilesData.forEach((profile: any) => {
+      profilesData?.forEach((profile: any) => {
         fetchedUsers[profile.username] = {
           id: profile.id,
           username: profile.username,
@@ -46,24 +40,27 @@ export const useAuth = ({ initialUsers }: UseAuthProps) => {
       setUsers(fetchedUsers);
       return fetchedUsers;
     } catch (error: any) {
-      // Ne pas afficher d'erreur si c'est juste une erreur d'authentification
-      if (error.status !== 401 && error.status !== 403) {
-        console.error("Error fetching all profiles:", error.message);
-      }
+      console.error("Error fetching all profiles:", error.message);
       return {};
     }
   };
 
   // Effect to handle initial load and auth state changes
   useEffect(() => {
-    // Initial fetch of profiles and current user
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('auth_token');
-      const userId = localStorage.getItem('currentUserId');
-
-      if (token && userId) {
+    // Check current session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
         try {
-          const profile = await apiClient.getProfile(userId);
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) throw error;
+
           const fullUser: User = {
             id: profile.id,
             username: profile.username,
@@ -79,31 +76,76 @@ export const useAuth = ({ initialUsers }: UseAuthProps) => {
             removed_permissions: Array.isArray(profile.removed_permissions) ? profile.removed_permissions : (profile.removed_permissions ? JSON.parse(profile.removed_permissions) : []),
           };
           setCurrentUser({ username: profile.username, details: fullUser });
-          // Fetch all profiles only if user is authenticated
           await fetchAllProfiles();
         } catch (error) {
           console.error("Error fetching profile on init:", error);
-          localStorage.removeItem('currentUserId');
-          localStorage.removeItem('auth_token');
           setCurrentUser(null);
         }
       }
-      // Don't fetch profiles if no token - wait for login
     };
 
-    initializeAuth();
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        try {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (error) throw error;
+
+          const fullUser: User = {
+            id: profile.id,
+            username: profile.username,
+            first_name: profile.first_name,
+            last_name: profile.last_name,
+            name: `${profile.civility || ''} ${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            civility: profile.civility,
+            email: profile.email,
+            position: profile.service,
+            role: profile.role,
+            pin: profile.pin,
+            added_permissions: Array.isArray(profile.added_permissions) ? profile.added_permissions : (profile.added_permissions ? JSON.parse(profile.added_permissions) : []),
+            removed_permissions: Array.isArray(profile.removed_permissions) ? profile.removed_permissions : (profile.removed_permissions ? JSON.parse(profile.removed_permissions) : []),
+          };
+          setCurrentUser({ username: profile.username, details: fullUser });
+          await fetchAllProfiles();
+        } catch (error) {
+          console.error("Error fetching profile on auth change:", error);
+          setCurrentUser(null);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogin = async (email: string, pass: string): Promise<boolean> => {
     try {
-      const { user, token } = await apiClient.signIn(email, pass);
-      
-      // Le token est déjà défini dans apiClient.signIn, mais on s'assure qu'il est bien stocké
-      if (token) {
-        apiClient.setToken(token);
-      }
-      
-      const profile = await apiClient.getProfile(user.id);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: pass,
+      });
+
+      if (error) throw error;
+      if (!data.user) throw new Error("Aucun utilisateur retourné");
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       const fullUser: User = {
         id: profile.id,
         username: profile.username,
@@ -120,7 +162,6 @@ export const useAuth = ({ initialUsers }: UseAuthProps) => {
       };
       setCurrentUser({ username: profile.username, details: fullUser });
       setUsers(prev => ({ ...prev, [profile.username]: fullUser }));
-      localStorage.setItem('currentUserId', user.id);
       showSuccess("Connexion réussie !");
       await fetchAllProfiles();
       return true;
@@ -132,22 +173,23 @@ export const useAuth = ({ initialUsers }: UseAuthProps) => {
 
   const handleLogout = async () => {
     try {
-      await apiClient.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       setCurrentUser(null);
-      localStorage.removeItem('currentUserId');
       showSuccess("Déconnexion réussie.");
     } catch (error: any) {
       showError(error.message || "Erreur lors de la déconnexion.");
       // Déconnexion locale même en cas d'erreur
       setCurrentUser(null);
-      localStorage.removeItem('currentUserId');
-      localStorage.removeItem('auth_token');
     }
   };
 
   const updatePassword = async (newPassword: string): Promise<boolean> => {
     try {
-      await apiClient.updatePassword(newPassword);
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      if (error) throw error;
       showSuccess("Mot de passe mis à jour avec succès.");
       return true;
     } catch (error: any) {

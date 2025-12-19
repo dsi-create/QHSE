@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { doctors as initialDoctors } from '@/lib/doctors';
 import { Incident, Visitor, BiomedicalEquipment, MaintenanceTask, Notification, User, Users, Room, Booking, Doctor, PlannedTask } from '@/types';
 import { showSuccess, showError } from '@/utils/toast';
-import { apiClient } from './integrations/api/client';
+import { supabase } from './integrations/supabase/client';
 
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -40,32 +40,36 @@ const App = () => {
   const { plannedTasks, setPlannedTasks, addPlannedTask, updatePlannedTaskStatus, deletePlannedTask } = usePlannedTasks({ currentUser, users, addNotification });
   const { addUser, deleteUser, updateUserPermissions } = useUserManagement({ setUsers, fetchAllProfiles }); // Pass fetchAllProfiles
 
-  // Effect to ensure Superadmin exists via API
+  // Effect to ensure Superadmin exists in Supabase
   useEffect(() => {
     const ensureSuperadmin = async () => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) { // Only run if no user is currently logged in
-        console.log("App.tsx: Invoking ensure-superadmin API...");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { // Only run if no user is currently logged in
+        console.log("App.tsx: Checking for superadmin in Supabase...");
         try {
-          const data = await apiClient.ensureSuperadmin();
+          const { data: admins, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('role', 'superadmin')
+            .limit(1);
 
-          if (data && !data.success) {
-            console.error("App.tsx: ensure-superadmin API reported failure:", data.message);
-            showError(`Échec de l'initialisation du Super Admin: ${data.message}`);
+          if (error) throw error;
+
+          if (!admins || admins.length === 0) {
+            console.log("App.tsx: No superadmin found. Please create one manually in Supabase dashboard.");
+            // Note: In Supabase, you typically create the first admin through the dashboard or migrations
           } else {
-            console.log("App.tsx: ensure-superadmin API completed successfully.");
-            // Don't fetch profiles here - wait for user login
-            // fetchAllProfiles() will be called after successful login
+            console.log("App.tsx: Superadmin exists in Supabase.");
           }
         } catch (error: any) {
-          console.error("App.tsx: Error invoking ensure-superadmin API:", error.message);
-          showError(`Erreur lors de l'initialisation du Super Admin: ${error.message}`);
+          console.error("App.tsx: Error checking for superadmin:", error.message);
+          // Don't show error to user, just log it
         }
       }
     };
 
     ensureSuperadmin();
-  }, []); // Remove fetchAllProfiles from dependency array
+  }, []);
 
   const handleResetData = async () => {
     // This function will need to be updated to clear data from Supabase
