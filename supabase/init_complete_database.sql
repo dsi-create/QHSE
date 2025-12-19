@@ -1012,7 +1012,7 @@ INSERT INTO rooms (id, name, capacity, location, doctor_in_charge)
 VALUES 
     (uuid_generate_v4(), 'Salle de Consultation 1', 1, 'Rez-de-chaussée', 'Dr. Médecin'),
     (uuid_generate_v4(), 'Salle de Consultation 2', 1, 'Rez-de-chaussée', 'Dr. Médecin'),
-    (uuid_generate_v4(), 'Salle d\'Examen', 1, 'Premier étage', NULL),
+    (uuid_generate_v4(), 'Salle d''Examen', 1, 'Premier étage', NULL),
     (uuid_generate_v4(), 'Salle de Réunion', 10, 'Premier étage', NULL),
     (uuid_generate_v4(), 'Amphithéâtre', 50, 'Rez-de-chaussée', NULL)
 ON CONFLICT DO NOTHING;
