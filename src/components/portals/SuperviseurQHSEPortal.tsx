@@ -1,0 +1,180 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Icon } from "@/components/Icon";
+import { DashboardCard } from "@/components/shared/DashboardCard";
+import { User, Incident, Visitor, PlannedTask, Booking, Notification, Users } from "@/types";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+
+interface PortalProps {
+  user: User;
+  incidents: Incident[];
+  visitors: Visitor[];
+  plannedTasks: PlannedTask[];
+  bookings: Booking[];
+  notifications: Notification[];
+  users?: Users;
+  onNavigate: (tabId: string) => void;
+}
+
+// Portail Superviseur QHSE
+export const SuperviseurQHSEPortal = ({ user, incidents, visitors, plannedTasks, bookings, notifications, users, onNavigate }: PortalProps) => {
+  const today = new Date();
+  const todayStr = today.toDateString();
+  
+  const stats = {
+    totalIncidents: incidents.length,
+    newIncidents: incidents.filter(i => i.statut === 'nouveau').length,
+    inProgress: incidents.filter(i => i.statut === 'cours').length,
+    resolved: incidents.filter(i => i.statut === 'resolu').length,
+    todayVisitors: visitors.filter(v => new Date(v.entry_time).toDateString() === todayStr).length,
+    activeBookings: bookings.filter(b => b.status === 'réservé' || b.status === 'en_cours').length,
+    pendingTasks: plannedTasks.filter(t => t.status === 'à faire').length,
+  };
+
+  return (
+    <div className="space-y-8 fade-in">
+      {/* En-tête personnalisé */}
+      <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 text-white p-8 rounded-xl shadow-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center mb-3">
+              <Icon name="UserCog" className="text-4xl mr-3" />
+              <h1 className="text-4xl font-bold">Portail QHSE</h1>
+            </div>
+            <p className="text-purple-100 text-xl">
+              {user.civility} {user.first_name} {user.last_name} - Superviseur Qualité, Hygiène, Sécurité et Environnement
+            </p>
+            <p className="text-purple-200 mt-2">
+              {format(today, "EEEE d MMMM yyyy", { locale: fr })} - {format(today, "HH:mm")}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistiques principales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <DashboardCard 
+          title="Tickets Total" 
+          value={stats.totalIncidents} 
+          iconName="Ticket" 
+          colorClass="bg-blue-100 text-blue-600"
+          onClick={() => onNavigate('qhseTickets')}
+        />
+        <DashboardCard 
+          title="Nouveaux Tickets" 
+          value={stats.newIncidents} 
+          iconName="AlertCircle" 
+          colorClass="bg-red-100 text-red-600"
+          onClick={() => onNavigate('qhseTickets')}
+        />
+        <DashboardCard 
+          title="En Cours" 
+          value={stats.inProgress} 
+          iconName="Clock" 
+          colorClass="bg-yellow-100 text-yellow-600"
+          onClick={() => onNavigate('qhseTickets')}
+        />
+        <DashboardCard 
+          title="Résolus" 
+          value={stats.resolved} 
+          iconName="CheckCircle2" 
+          colorClass="bg-green-100 text-green-600"
+          onClick={() => onNavigate('qhseTickets')}
+        />
+      </div>
+
+      {/* Statistiques secondaires */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <DashboardCard 
+          title="Visiteurs Aujourd'hui" 
+          value={stats.todayVisitors} 
+          iconName="Users" 
+          colorClass="bg-teal-100 text-teal-600"
+          onClick={() => onNavigate('visitorLog')}
+        />
+        <DashboardCard 
+          title="Réservations Actives" 
+          value={stats.activeBookings} 
+          iconName="Calendar" 
+          colorClass="bg-purple-100 text-purple-600"
+          onClick={() => onNavigate('planningSalles')}
+        />
+        <DashboardCard 
+          title="Tâches à Planifier" 
+          value={stats.pendingTasks} 
+          iconName="ClipboardList" 
+          colorClass="bg-indigo-100 text-indigo-600"
+          onClick={() => onNavigate('planningTasks')}
+        />
+      </div>
+
+      {/* Accès rapides */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseTickets')}>
+          <CardContent className="p-6">
+            <Icon name="Ticket" className="text-purple-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Gestion Tickets</h3>
+            <p className="text-sm text-gray-600">Assigner et suivre les tickets</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseDocuments')}>
+          <CardContent className="p-6">
+            <Icon name="FileText" className="text-cyan-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Gestion Documentaire</h3>
+            <p className="text-sm text-gray-600">Documents QHSE</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseAudits')}>
+          <CardContent className="p-6">
+            <Icon name="ClipboardCheck" className="text-blue-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Audits & Inspections</h3>
+            <p className="text-sm text-gray-600">Programmer et suivre</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseTrainings')}>
+          <CardContent className="p-6">
+            <Icon name="GraduationCap" className="text-green-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Formations</h3>
+            <p className="text-sm text-gray-600">Gérer les formations</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseWaste')}>
+          <CardContent className="p-6">
+            <Icon name="Trash2" className="text-orange-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Déchets Médicaux</h3>
+            <p className="text-sm text-gray-600">Suivi et traçabilité</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseSterilization')}>
+          <CardContent className="p-6">
+            <Icon name="Droplet" className="text-blue-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Stérilisation</h3>
+            <p className="text-sm text-gray-600">Cycles et traçabilité</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('qhseRisks')}>
+          <CardContent className="p-6">
+            <Icon name="AlertTriangle" className="text-red-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Gestion des Risques</h3>
+            <p className="text-sm text-gray-600">Identifier et traiter</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('planningSalles')}>
+          <CardContent className="p-6">
+            <Icon name="Calendar" className="text-blue-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Planning Salles</h3>
+            <p className="text-sm text-gray-600">Gérer les réservations</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover cursor-pointer" onClick={() => onNavigate('settings')}>
+          <CardContent className="p-6">
+            <Icon name="Settings" className="text-gray-600 mb-3 text-3xl" />
+            <h3 className="font-semibold mb-2">Utilisateurs</h3>
+            <p className="text-sm text-gray-600">Gérer les comptes</p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
